@@ -4,12 +4,12 @@ use {
         layout::{Alignment, Rect},
         style::{Style, Stylize},
         text::{Line, Span},
-        widgets::{Block, Padding, Paragraph, Widget, Wrap},
+        widgets::{Block, Padding, Paragraph},
     },
     ratatui_opentui_loader::KittLoader,
 };
 
-use {super::render_bordered_panel, crate::theme::ColorTheme};
+use {super::InputBottomPanel, crate::theme::ColorTheme};
 
 pub fn render_input(
     frame: &mut Frame,
@@ -20,55 +20,17 @@ pub fn render_input(
     t: &ColorTheme,
 ) {
     let buf = frame.buffer_mut();
-    let inner = render_bordered_panel(
-        buf,
-        area,
-        t.primary,
-        Some(t.bg_element),
-        Padding::new(1, 1, 1, 1),
-    );
-    if inner.is_empty() {
-        return;
-    }
-
-    let mut lines: Vec<Line> = input
-        .split('\n')
-        .map(|l| Line::styled(l, Style::new().fg(t.text)))
-        .collect();
-    let cursor = if focused {
-        if blink_on {
-            "\u{2588}"
-        } else {
-            " "
-        }
-    } else {
-        "\u{2592}"
-    };
-    let cursor_style = if focused {
-        Style::new().fg(t.text)
-    } else {
-        Style::new().fg(t.text_muted)
-    };
-    if let Some(last) = lines.last_mut() {
-        last.spans.push(Span::styled(cursor, cursor_style));
-    } else {
-        lines.push(Line::styled(cursor, cursor_style));
-    }
-    Paragraph::new(lines)
-        .wrap(Wrap { trim: false })
-        .render(inner, buf);
-
-    if inner.height >= 2 {
-        let label_area = Rect::new(inner.x, inner.y + inner.height - 1, inner.width, 1);
-        let label = Line::from(vec![
-            Span::styled("Build", Style::new().fg(t.primary).bold()),
-            Span::styled(" \u{00b7} ", Style::new().fg(t.text_muted)),
-            Span::styled("GPT-5.5", Style::new().fg(t.text)),
-            Span::styled(" ", Style::new().fg(t.text_muted)),
-            Span::styled("OpenAI", Style::new().fg(t.text_muted)),
-        ]);
-        Paragraph::new(label).render(label_area, buf);
-    }
+    InputBottomPanel::new(input)
+        .focused(focused)
+        .blink_on(blink_on)
+        .border_color(t.primary)
+        .content_bg(t.bg_element)
+        .text_color(t.text)
+        .muted_color(t.text_muted)
+        .label_accent(t.primary)
+        .padding(Padding::new(1, 1, 1, 1))
+        .label("Build", "GPT-5.5", "OpenAI")
+        .render(area, buf);
 }
 
 pub fn render_status_bar(
@@ -82,11 +44,15 @@ pub fn render_status_bar(
     let left = if show_loader {
         let loader_line = loader.into_line(10);
         Line::from(
-            [vec![Span::raw("   ")], loader_line.spans.clone(), vec![
-                Span::raw("  "),
-                Span::styled("esc ", Style::new().fg(t.text_muted).bold()),
-                Span::styled("interrupt", Style::new().fg(t.text_muted)),
-            ]]
+            [
+                vec![Span::raw("   ")],
+                loader_line.spans.clone(),
+                vec![
+                    Span::raw("  "),
+                    Span::styled("esc ", Style::new().fg(t.text_muted).bold()),
+                    Span::styled("interrupt", Style::new().fg(t.text_muted)),
+                ],
+            ]
             .concat(),
         )
     } else {

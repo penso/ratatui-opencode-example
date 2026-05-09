@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use {
-    super::render_bordered_panel,
+    super::LeftBorderPanel,
     crate::{
         messages::{MessageBlock, TOOL_MAX_OUTPUT_LINES},
         theme::ColorTheme,
@@ -52,13 +52,11 @@ fn render_user_message(buf: &mut Buffer, text: &str, area: Rect, t: &ColorTheme)
         area.width,
         area.height.saturating_sub(1),
     );
-    let inner = render_bordered_panel(
-        buf,
-        block_area,
-        t.primary,
-        Some(t.bg_user),
-        Padding::new(1, 1, 1, 1),
-    );
+    let inner = LeftBorderPanel::new()
+        .border_color(t.primary)
+        .content_bg(t.bg_user)
+        .padding(Padding::new(1, 1, 1, 1))
+        .render(block_area, buf);
     if inner.is_empty() {
         return;
     }
@@ -92,7 +90,10 @@ fn render_thinking_block(buf: &mut Buffer, summary: &str, body: &str, area: Rect
         area.width,
         area.height.saturating_sub(1),
     );
-    let inner = render_bordered_panel(buf, block_area, t.primary, None, Padding::new(1, 0, 0, 0));
+    let inner = LeftBorderPanel::new()
+        .border_color(t.primary)
+        .padding(Padding::new(1, 0, 0, 0))
+        .render(block_area, buf);
     if inner.is_empty() {
         return;
     }
@@ -134,13 +135,11 @@ fn render_tool_output(
     } else {
         t.bg_panel
     };
-    let inner = render_bordered_panel(
-        buf,
-        block_area,
-        t.border,
-        Some(bg),
-        Padding::new(1, 1, 1, 1),
-    );
+    let inner = LeftBorderPanel::new()
+        .border_color(t.border)
+        .content_bg(bg)
+        .padding(Padding::new(1, 1, 1, 1))
+        .render(block_area, buf);
     if inner.is_empty() {
         return;
     }
@@ -202,7 +201,10 @@ fn render_error_block(buf: &mut Buffer, text: &str, area: Rect, t: &ColorTheme) 
         area.width,
         area.height.saturating_sub(1),
     );
-    let inner = render_bordered_panel(buf, block_area, t.error, None, Padding::new(1, 0, 0, 0));
+    let inner = LeftBorderPanel::new()
+        .border_color(t.error)
+        .padding(Padding::new(1, 0, 0, 0))
+        .render(block_area, buf);
     Paragraph::new(Text::styled(text, Style::new().fg(t.error)))
         .wrap(Wrap { trim: false })
         .render(inner, buf);
