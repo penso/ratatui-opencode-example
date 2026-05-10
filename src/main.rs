@@ -358,9 +358,8 @@ fn render_sidebar(frame: &mut Frame, area: Rect, app: &App) {
 
     let footer = Line::from(vec![
         Span::styled("• ", Style::new().fg(t.primary)),
-        Span::styled("Open", Style::new().fg(t.text_muted).bold()),
-        Span::styled("Code ", Style::new().fg(t.text).bold()),
-        Span::styled("1.14.41", Style::new().fg(t.text_muted)),
+        Span::styled("Ratatui ", Style::new().fg(t.text_muted)),
+        Span::styled("OpenCode Demo", Style::new().fg(t.text)),
     ]);
     Paragraph::new(footer)
         .style(Style::new().bg(t.bg_panel))

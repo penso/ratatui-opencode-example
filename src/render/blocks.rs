@@ -182,9 +182,14 @@ fn render_inline_result(buf: &mut Buffer, icon: &str, label: &str, area: Rect, t
     if area.height < 2 {
         return;
     }
+    let icon_color = if icon == "\u{25a3}" {
+        t.primary
+    } else {
+        t.text_muted
+    };
     let line = Line::from(vec![
         Span::raw("  "),
-        Span::styled(format!("{icon} "), Style::new().fg(t.text_muted)),
+        Span::styled(format!("{icon} "), Style::new().fg(icon_color)),
         Span::styled(label, Style::new().fg(t.text_muted)),
     ]);
     let y = (area.y + 1).min(area.y + area.height - 1);
