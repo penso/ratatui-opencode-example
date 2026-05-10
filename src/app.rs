@@ -308,10 +308,7 @@ fn handle_key_normal(app: &mut App, code: KeyCode, modifiers: KeyModifiers) -> b
             app.command_search.clear();
             app.command_selected = 0;
         },
-        KeyCode::Enter if modifiers.contains(KeyModifiers::SHIFT) => {
-            app.input.push('\n');
-        },
-        KeyCode::Char('j' | 'J') if modifiers.contains(KeyModifiers::SHIFT) => {
+        KeyCode::Enter | KeyCode::Char('j' | 'J') if modifiers.contains(KeyModifiers::SHIFT) => {
             app.input.push('\n');
         },
         KeyCode::Enter => app.submit_input(),

@@ -23,7 +23,9 @@ use {
         layout::{Constraint, Layout, Margin, Rect},
         style::{Style, Stylize},
         text::{Line, Span, Text},
-        widgets::{Block, Paragraph, Widget, Wrap},
+        widgets::{
+            Block, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Widget, Wrap,
+        },
     },
 };
 
@@ -173,14 +175,33 @@ fn draw(frame: &mut Frame, app: &mut App) {
     let scroll = app.scroll_offset;
 
     if app.view.scrollbar_visible {
-        render_scrollbar(
-            frame,
-            padded_messages,
-            scroll,
-            total_height,
-            t.bg_element,
-            t.border,
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None)
+            .track_symbol(Some(" "))
+            .track_style(Style::new().bg(t.bg_element))
+            .thumb_symbol(" ")
+            .thumb_style(Style::new().bg(t.border));
+        let track_height = padded_messages.height;
+        let thumb_height = ((u32::from(track_height) * u32::from(track_height))
+            / u32::from(total_height))
+        .max(1)
+        .min(u32::from(track_height.saturating_sub(1)));
+        let scroll_scale = u32::from(track_height).saturating_sub(thumb_height);
+        let content_length = u32::from(max_scroll)
+            .saturating_mul(scroll_scale)
+            .saturating_add(1);
+        let viewport_length = thumb_height.saturating_mul(u32::from(max_scroll)).max(1);
+        let mut scrollbar_state = ScrollbarState::new(content_length as usize)
+            .position(u32::from(scroll).saturating_mul(scroll_scale) as usize)
+            .viewport_content_length(viewport_length as usize);
+        let scrollbar_area = Rect::new(
+            padded_messages.x,
+            padded_messages.y,
+            padded_messages.width.saturating_sub(1),
+            padded_messages.height,
         );
+        frame.render_stateful_widget(scrollbar, scrollbar_area, &mut scrollbar_state);
     }
 
     app.tool_block_rects.clear();
@@ -284,45 +305,6 @@ fn draw(frame: &mut Frame, app: &mut App) {
 
     if let Some(sidebar_area) = sidebar_area {
         render_sidebar(frame, sidebar_area, app);
-    }
-}
-
-fn render_scrollbar(
-    frame: &mut Frame,
-    area: Rect,
-    scroll: u16,
-    total_height: u16,
-    track_color: ratatui::style::Color,
-    color: ratatui::style::Color,
-) {
-    if area.is_empty() || total_height <= area.height {
-        return;
-    }
-
-    let track_height = area.height;
-    let thumb_height = ((u32::from(track_height) * u32::from(track_height))
-        / u32::from(total_height))
-    .max(1)
-    .min(u32::from(track_height)) as u16;
-    let max_scroll = total_height.saturating_sub(track_height);
-    let max_thumb_top = track_height.saturating_sub(thumb_height);
-    let thumb_top = if max_scroll == 0 {
-        0
-    } else {
-        ((u32::from(scroll) * u32::from(max_thumb_top)) / u32::from(max_scroll)) as u16
-    };
-
-    let x = area.x + area.width.saturating_sub(2);
-    let buf = frame.buffer_mut();
-    for y in area.y..area.y + area.height {
-        if let Some(cell) = buf.cell_mut((x, y)) {
-            cell.set_symbol(" ").set_style(Style::new().bg(track_color));
-        }
-    }
-    for y in area.y + thumb_top..area.y + thumb_top + thumb_height {
-        if let Some(cell) = buf.cell_mut((x, y)) {
-            cell.set_symbol(" ").set_style(Style::new().bg(color));
-        }
     }
 }
 
