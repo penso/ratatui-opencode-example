@@ -21,6 +21,15 @@ pub enum Mode {
     ThemePicker,
 }
 
+pub struct ViewOptions {
+    pub sidebar_visible: bool,
+    pub scrollbar_visible: bool,
+}
+
+enum KeyChord {
+    CtrlX,
+}
+
 pub struct App {
     pub messages: Vec<MessageBlock>,
     pub scroll_offset: u16,
@@ -45,6 +54,8 @@ pub struct App {
     pub theme_scroll: usize,
     pub theme_modal_rect: Rect,
     pub loader_visible_ticks: u32,
+    pub view: ViewOptions,
+    pending_chord: Option<KeyChord>,
 }
 
 impl App {
@@ -73,6 +84,11 @@ impl App {
             theme_scroll: 0,
             theme_modal_rect: Rect::ZERO,
             loader_visible_ticks: 0,
+            view: ViewOptions {
+                sidebar_visible: true,
+                scrollbar_visible: true,
+            },
+            pending_chord: None,
         }
     }
 
@@ -272,15 +288,30 @@ fn handle_key_slash(app: &mut App, code: KeyCode, modifiers: KeyModifiers) -> bo
 }
 
 fn handle_key_normal(app: &mut App, code: KeyCode, modifiers: KeyModifiers) -> bool {
+    if matches!(app.pending_chord.take(), Some(KeyChord::CtrlX)) {
+        match code {
+            KeyCode::Char('b') => app.view.sidebar_visible = !app.view.sidebar_visible,
+            KeyCode::Char('s') => app.view.scrollbar_visible = !app.view.scrollbar_visible,
+            _ => {},
+        }
+        return false;
+    }
+
     match code {
         KeyCode::Esc => return true,
         KeyCode::Char('c' | 'd') if modifiers.contains(KeyModifiers::CONTROL) => return true,
+        KeyCode::Char('x') if modifiers.contains(KeyModifiers::CONTROL) => {
+            app.pending_chord = Some(KeyChord::CtrlX);
+        },
         KeyCode::Char('p') if modifiers.contains(KeyModifiers::CONTROL) => {
             app.mode = Mode::CommandPalette;
             app.command_search.clear();
             app.command_selected = 0;
         },
         KeyCode::Enter if modifiers.contains(KeyModifiers::SHIFT) => {
+            app.input.push('\n');
+        },
+        KeyCode::Char('j' | 'J') if modifiers.contains(KeyModifiers::SHIFT) => {
             app.input.push('\n');
         },
         KeyCode::Enter => app.submit_input(),

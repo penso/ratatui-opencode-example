@@ -61,6 +61,11 @@ pub const COMMANDS: &[Command] = &[
         section: "Session",
     },
     Command {
+        name: "Toggle session scrollbar",
+        shortcut: "ctrl+x s",
+        section: "Session",
+    },
+    Command {
         name: "Disable code concealment",
         shortcut: "ctrl+x h",
         section: "Session",

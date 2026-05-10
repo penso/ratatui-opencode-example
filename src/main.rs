@@ -11,15 +11,19 @@ use std::{
 
 use {
     crossterm::{
-        event::{self, DisableMouseCapture, EnableMouseCapture},
+        event::{
+            self, DisableMouseCapture, EnableMouseCapture, KeyboardEnhancementFlags,
+            PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+        },
         execute,
     },
     ratatui::{
         Frame,
         buffer::Buffer,
         layout::{Constraint, Layout, Margin, Rect},
-        style::Style,
-        widgets::Block,
+        style::{Style, Stylize},
+        text::{Line, Span, Text},
+        widgets::{Block, Paragraph, Widget, Wrap},
     },
 };
 
@@ -34,9 +38,22 @@ use {
 
 fn main() -> io::Result<()> {
     let mut terminal = ratatui::init();
-    execute!(io::stdout(), EnableMouseCapture)?;
+    execute!(
+        io::stdout(),
+        EnableMouseCapture,
+        PushKeyboardEnhancementFlags(
+            KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                | KeyboardEnhancementFlags::REPORT_ALL_KEYS_AS_ESCAPE_CODES
+                | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
+                | KeyboardEnhancementFlags::REPORT_EVENT_TYPES
+        )
+    )?;
     let result = run(&mut terminal);
-    execute!(io::stdout(), DisableMouseCapture)?;
+    execute!(
+        io::stdout(),
+        PopKeyboardEnhancementFlags,
+        DisableMouseCapture
+    )?;
     ratatui::restore();
     while event::poll(Duration::from_millis(10)).unwrap_or(false) {
         let _ = event::read();
@@ -86,6 +103,20 @@ fn draw(frame: &mut Frame, app: &mut App) {
 
     frame.render_widget(Block::default().style(Style::new().bg(t.bg)), area);
 
+    let show_sidebar = app.view.sidebar_visible && area.width >= 84;
+    let (main_area, sidebar_area) = if show_sidebar {
+        let sidebar_width = 42.min(area.width.saturating_sub(42));
+        let [main_area, _gap, sidebar_area] = Layout::horizontal([
+            Constraint::Min(40),
+            Constraint::Length(1),
+            Constraint::Length(sidebar_width),
+        ])
+        .areas(area);
+        (main_area, Some(sidebar_area))
+    } else {
+        (area, None)
+    };
+
     let [
         messages_area,
         _msg_gap,
@@ -97,15 +128,38 @@ fn draw(frame: &mut Frame, app: &mut App) {
         Constraint::Fill(1),
         Constraint::Length(1),
         Constraint::Length(INPUT_HEIGHT),
-        Constraint::Length(1),
+        Constraint::Length(0),
         Constraint::Length(1),
         Constraint::Length(1),
     ])
-    .areas(area);
+    .areas(main_area);
 
-    let padded_messages = messages_area.inner(Margin::new(2, 0));
-    let padded_input = input_area.inner(Margin::new(2, 0));
-    let content_width = padded_messages.width;
+    let padded_messages = if app.view.scrollbar_visible {
+        Rect::new(
+            messages_area.x + 2,
+            messages_area.y,
+            messages_area.width.saturating_sub(2),
+            messages_area.height,
+        )
+    } else {
+        messages_area.inner(Margin::new(2, 0))
+    };
+    let padded_input = if app.view.scrollbar_visible {
+        Rect::new(
+            input_area.x + 2,
+            input_area.y,
+            input_area.width.saturating_sub(3),
+            input_area.height,
+        )
+    } else {
+        input_area.inner(Margin::new(2, 0))
+    };
+    let scrollbar_width = if app.view.scrollbar_visible {
+        4
+    } else {
+        0
+    };
+    let content_width = padded_messages.width.saturating_sub(scrollbar_width);
 
     let block_heights: Vec<u16> = app
         .messages
@@ -117,6 +171,17 @@ fn draw(frame: &mut Frame, app: &mut App) {
     let max_scroll = total_height.saturating_sub(padded_messages.height);
     app.scroll_offset = app.scroll_offset.min(max_scroll);
     let scroll = app.scroll_offset;
+
+    if app.view.scrollbar_visible {
+        render_scrollbar(
+            frame,
+            padded_messages,
+            scroll,
+            total_height,
+            t.bg_element,
+            t.border,
+        );
+    }
 
     app.tool_block_rects.clear();
 
@@ -212,8 +277,110 @@ fn draw(frame: &mut Frame, app: &mut App) {
     render_status_bar(frame, status_area, &app.loader, &t, show_loader);
 
     match &app.mode {
-        app::Mode::CommandPalette => render_command_palette(frame, area, app),
-        app::Mode::ThemePicker => render_theme_modal(frame, area, app),
+        app::Mode::CommandPalette => render_command_palette(frame, main_area, app),
+        app::Mode::ThemePicker => render_theme_modal(frame, main_area, app),
         app::Mode::Normal | app::Mode::SlashMenu => {},
     }
+
+    if let Some(sidebar_area) = sidebar_area {
+        render_sidebar(frame, sidebar_area, app);
+    }
+}
+
+fn render_scrollbar(
+    frame: &mut Frame,
+    area: Rect,
+    scroll: u16,
+    total_height: u16,
+    track_color: ratatui::style::Color,
+    color: ratatui::style::Color,
+) {
+    if area.is_empty() || total_height <= area.height {
+        return;
+    }
+
+    let track_height = area.height;
+    let thumb_height = ((u32::from(track_height) * u32::from(track_height))
+        / u32::from(total_height))
+    .max(1)
+    .min(u32::from(track_height)) as u16;
+    let max_scroll = total_height.saturating_sub(track_height);
+    let max_thumb_top = track_height.saturating_sub(thumb_height);
+    let thumb_top = if max_scroll == 0 {
+        0
+    } else {
+        ((u32::from(scroll) * u32::from(max_thumb_top)) / u32::from(max_scroll)) as u16
+    };
+
+    let x = area.x + area.width.saturating_sub(2);
+    let buf = frame.buffer_mut();
+    for y in area.y..area.y + area.height {
+        if let Some(cell) = buf.cell_mut((x, y)) {
+            cell.set_symbol(" ").set_style(Style::new().bg(track_color));
+        }
+    }
+    for y in area.y + thumb_top..area.y + thumb_top + thumb_height {
+        if let Some(cell) = buf.cell_mut((x, y)) {
+            cell.set_symbol(" ").set_style(Style::new().bg(color));
+        }
+    }
+}
+
+fn render_sidebar(frame: &mut Frame, area: Rect, app: &App) {
+    let t = app.theme;
+    frame.render_widget(Block::new().style(Style::new().bg(t.bg_panel)), area);
+
+    let inner = area.inner(Margin {
+        horizontal: 2,
+        vertical: 1,
+    });
+    if inner.is_empty() {
+        return;
+    }
+
+    let footer_height = 2.min(inner.height);
+    let [content_area, footer_area] =
+        Layout::vertical([Constraint::Min(0), Constraint::Length(footer_height)]).areas(inner);
+
+    let content = Text::from(vec![
+        Line::from(Span::styled(
+            "New TUI architecture for Polyphony",
+            Style::new().fg(t.text).bold(),
+        )),
+        Line::raw(""),
+        Line::from(Span::styled("Context", Style::new().fg(t.text).bold())),
+        Line::styled("36,251 tokens", Style::new().fg(t.text_muted)),
+        Line::styled("9% used", Style::new().fg(t.text_muted)),
+        Line::styled("$0.00 spent", Style::new().fg(t.text_muted)),
+        Line::raw(""),
+        Line::from(Span::styled("MCP", Style::new().fg(t.text).bold())),
+        Line::from(vec![
+            Span::styled("• ", Style::new().fg(t.error)),
+            Span::styled("linear ", Style::new().fg(t.text)),
+            Span::styled(
+                "SSE error: Non-200 status code (405)",
+                Style::new().fg(t.text_muted).italic(),
+            ),
+        ]),
+        Line::raw(""),
+        Line::from(Span::styled("LSP", Style::new().fg(t.text).bold())),
+        Line::styled(
+            "LSPs will activate as files are read",
+            Style::new().fg(t.text_muted),
+        ),
+    ]);
+    Paragraph::new(content)
+        .wrap(Wrap { trim: false })
+        .style(Style::new().bg(t.bg_panel))
+        .render(content_area, frame.buffer_mut());
+
+    let footer = Line::from(vec![
+        Span::styled("• ", Style::new().fg(t.primary)),
+        Span::styled("Open", Style::new().fg(t.text_muted).bold()),
+        Span::styled("Code ", Style::new().fg(t.text).bold()),
+        Span::styled("1.14.41", Style::new().fg(t.text_muted)),
+    ]);
+    Paragraph::new(footer)
+        .style(Style::new().bg(t.bg_panel))
+        .render(footer_area, frame.buffer_mut());
 }

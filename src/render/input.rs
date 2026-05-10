@@ -28,7 +28,8 @@ pub fn render_input(
         .text_color(t.text)
         .muted_color(t.text_muted)
         .label_accent(t.primary)
-        .padding(Padding::new(1, 1, 1, 1))
+        .bottom_half_bg(t.bg)
+        .padding(Padding::new(1, 1, 1, 0))
         .label("Build", "GPT-5.5", "OpenAI")
         .render(area, buf);
 }
@@ -64,7 +65,7 @@ pub fn render_status_bar(
         Span::raw("  "),
         Span::styled("ctrl+p ", Style::new().fg(t.text_muted).bold()),
         Span::styled("commands", Style::new().fg(t.text_muted)),
-        Span::raw("  "),
+        Span::raw(" "),
     ]);
     frame.render_widget(Paragraph::new(right).alignment(Alignment::Right), area);
 }

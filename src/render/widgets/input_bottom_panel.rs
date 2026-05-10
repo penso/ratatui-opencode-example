@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style, Stylize},
+    style::{Color, Style},
     text::{Line, Span},
     widgets::{Padding, Paragraph, Widget, Wrap},
 };
@@ -18,6 +18,7 @@ pub struct InputBottomPanel<'a> {
     text_color: Color,
     muted_color: Color,
     label_accent: Color,
+    bottom_half_bg: Color,
     padding: Padding,
     label_name: &'a str,
     label_model: &'a str,
@@ -35,6 +36,7 @@ impl<'a> InputBottomPanel<'a> {
             text_color: Color::Reset,
             muted_color: Color::Reset,
             label_accent: Color::Reset,
+            bottom_half_bg: Color::Reset,
             padding: Padding::ZERO,
             label_name: "",
             label_model: "",
@@ -85,6 +87,12 @@ impl<'a> InputBottomPanel<'a> {
     }
 
     #[must_use]
+    pub const fn bottom_half_bg(mut self, color: Color) -> Self {
+        self.bottom_half_bg = color;
+        self
+    }
+
+    #[must_use]
     pub const fn padding(mut self, padding: Padding) -> Self {
         self.padding = padding;
         self
@@ -112,9 +120,22 @@ impl<'a> InputBottomPanel<'a> {
             .wrap(Wrap { trim: false })
             .render(inner, buf);
 
-        if inner.height >= 2 {
-            let label_area = Rect::new(inner.x, inner.y + inner.height - 1, inner.width, 1);
+        if inner.height >= 3 {
+            let label_area = Rect::new(inner.x, inner.y + inner.height - 2, inner.width, 1);
             Paragraph::new(self.label_line()).render(label_area, buf);
+
+            let half_space_y = inner.y + inner.height - 1;
+            let content_x = area.x.saturating_add(1);
+            for x in content_x..area.x + area.width {
+                if let Some(cell) = buf.cell_mut((x, half_space_y)) {
+                    cell.set_symbol("▀")
+                        .set_style(Style::new().fg(self.content_bg).bg(self.bottom_half_bg));
+                }
+            }
+            if let Some(cell) = buf.cell_mut((area.x, half_space_y)) {
+                cell.set_symbol("╹")
+                    .set_style(Style::new().fg(self.border_color).bg(self.bottom_half_bg));
+            }
         }
     }
 
@@ -149,7 +170,7 @@ impl<'a> InputBottomPanel<'a> {
 
     fn label_line(self) -> Line<'a> {
         Line::from(vec![
-            Span::styled(self.label_name, Style::new().fg(self.label_accent).bold()),
+            Span::styled(self.label_name, Style::new().fg(self.label_accent)),
             Span::styled(" \u{00b7} ", Style::new().fg(self.muted_color)),
             Span::styled(self.label_model, Style::new().fg(self.text_color)),
             Span::styled(" ", Style::new().fg(self.muted_color)),

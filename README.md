@@ -23,6 +23,8 @@ cargo run
 | `Enter` | Send message |
 | `Shift+Enter` | Newline in input |
 | `Ctrl+P` | Open command palette |
+| `Ctrl+X` then `B` | Toggle sidebar |
+| `Ctrl+X` then `S` | Toggle session scrollbar |
 | `/` | Open slash command menu |
 | `PageUp` / `PageDown` | Scroll messages |
 | `Up` / `Down` | Input history |
