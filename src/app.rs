@@ -201,7 +201,7 @@ impl App {
 pub fn handle_event(app: &mut App, ev: Event) -> bool {
     match ev {
         Event::Key(key) => {
-            if key.kind != KeyEventKind::Press {
+            if !matches!(key.kind, KeyEventKind::Press | KeyEventKind::Repeat) {
                 return false;
             }
             handle_key(app, key.code, key.modifiers)
@@ -266,7 +266,13 @@ fn handle_key_command(app: &mut App, code: KeyCode) -> bool {
             let max = app.filtered_commands().len().saturating_sub(1);
             app.command_selected = (app.command_selected + 1).min(max);
         },
-        KeyCode::Esc | KeyCode::Enter => {
+        KeyCode::Esc => {
+            app.mode = Mode::Normal;
+            app.command_search.clear();
+            app.command_selected = 0;
+        },
+        KeyCode::Enter => {
+            run_selected_command(app);
             app.mode = Mode::Normal;
             app.command_search.clear();
             app.command_selected = 0;
@@ -282,6 +288,22 @@ fn handle_key_command(app: &mut App, code: KeyCode) -> bool {
         _ => {},
     }
     false
+}
+
+fn run_selected_command(app: &mut App) {
+    let Some(command_name) = app
+        .filtered_commands()
+        .get(app.command_selected)
+        .map(|cmd| cmd.name)
+    else {
+        return;
+    };
+
+    match command_name {
+        "Show sidebar" | "Hide sidebar" => app.view.sidebar_visible = !app.view.sidebar_visible,
+        "Toggle session scrollbar" => app.view.scrollbar_visible = !app.view.scrollbar_visible,
+        _ => {},
+    }
 }
 
 fn handle_key_slash(app: &mut App, code: KeyCode, modifiers: KeyModifiers) -> bool {
@@ -446,8 +468,10 @@ fn handle_mouse_command(app: &mut App, mouse: event::MouseEvent) {
             },
             MouseEventKind::Up(event::MouseButton::Left) => {
                 app.command_selected = idx;
+                run_selected_command(app);
                 app.mode = Mode::Normal;
                 app.command_search.clear();
+                app.command_selected = 0;
             },
             _ => {},
         }

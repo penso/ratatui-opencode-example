@@ -120,7 +120,12 @@ pub fn render_command_palette(frame: &mut Frame, area: Rect, app: &mut App) {
                 cell.set_style(Style::new().bg(row_bg));
             }
         }
-        Line::styled(cmd.name, Style::new().fg(t.text).bg(row_bg)).render(
+        let name = if cmd.name == "Show sidebar" && app.view.sidebar_visible {
+            "Hide sidebar"
+        } else {
+            cmd.name
+        };
+        Line::styled(name, Style::new().fg(t.text).bg(row_bg)).render(
             Rect::new(inner.x + pad, cy, inner.width.saturating_sub(pad * 2), 1),
             buf,
         );
