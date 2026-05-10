@@ -9,7 +9,10 @@ use {
     ratatui_opentui_loader::KittLoader,
 };
 
-use {super::InputBottomPanel, crate::theme::ColorTheme};
+use {
+    super::InputBottomPanel,
+    crate::{app::AgentMode, theme::ColorTheme},
+};
 
 pub fn render_input(
     frame: &mut Frame,
@@ -17,20 +20,23 @@ pub fn render_input(
     input: &str,
     focused: bool,
     blink_on: bool,
+    agent_mode: AgentMode,
     t: &ColorTheme,
 ) {
+    let accent = agent_mode.accent(t);
     let buf = frame.buffer_mut();
     InputBottomPanel::new(input)
         .focused(focused)
         .blink_on(blink_on)
-        .border_color(t.primary)
+        .border_color(accent)
         .content_bg(t.bg_element)
         .text_color(t.text)
         .muted_color(t.text_muted)
-        .label_accent(t.primary)
+        .label_accent(accent)
         .bottom_half_bg(t.bg)
         .padding(Padding::new(1, 1, 1, 0))
-        .label("Build", "GPT-5.5", "OpenAI")
+        .agent_mode(agent_mode)
+        .model("GPT-5.5", "OpenAI")
         .render(area, buf);
 }
 

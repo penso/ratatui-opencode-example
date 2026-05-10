@@ -7,6 +7,7 @@ use ratatui::{
 };
 
 use super::LeftBorderPanel;
+use crate::app::AgentMode;
 
 #[derive(Clone, Copy, Debug)]
 pub struct InputBottomPanel<'a> {
@@ -20,7 +21,7 @@ pub struct InputBottomPanel<'a> {
     label_accent: Color,
     bottom_half_bg: Color,
     padding: Padding,
-    label_name: &'a str,
+    agent_mode: AgentMode,
     label_model: &'a str,
     label_provider: &'a str,
 }
@@ -38,7 +39,7 @@ impl<'a> InputBottomPanel<'a> {
             label_accent: Color::Reset,
             bottom_half_bg: Color::Reset,
             padding: Padding::ZERO,
-            label_name: "",
+            agent_mode: AgentMode::Build,
             label_model: "",
             label_provider: "",
         }
@@ -99,8 +100,13 @@ impl<'a> InputBottomPanel<'a> {
     }
 
     #[must_use]
-    pub const fn label(mut self, name: &'a str, model: &'a str, provider: &'a str) -> Self {
-        self.label_name = name;
+    pub const fn agent_mode(mut self, mode: AgentMode) -> Self {
+        self.agent_mode = mode;
+        self
+    }
+
+    #[must_use]
+    pub const fn model(mut self, model: &'a str, provider: &'a str) -> Self {
         self.label_model = model;
         self.label_provider = provider;
         self
@@ -170,7 +176,7 @@ impl<'a> InputBottomPanel<'a> {
 
     fn label_line(self) -> Line<'a> {
         Line::from(vec![
-            Span::styled(self.label_name, Style::new().fg(self.label_accent)),
+            Span::styled(self.agent_mode.label(), Style::new().fg(self.label_accent)),
             Span::styled(" \u{00b7} ", Style::new().fg(self.muted_color)),
             Span::styled(self.label_model, Style::new().fg(self.text_color)),
             Span::styled(" ", Style::new().fg(self.muted_color)),

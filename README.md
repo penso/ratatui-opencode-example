@@ -22,6 +22,7 @@ cargo run
 |---|---|
 | `Enter` | Send message |
 | `Shift+Enter` | Newline in input |
+| `Tab` / `Shift+Tab` | Cycle Build/Plan agent tabs |
 | `Ctrl+P` | Open command palette |
 | `Ctrl+X` then `B` | Toggle sidebar |
 | `Ctrl+X` then `S` | Toggle session scrollbar |

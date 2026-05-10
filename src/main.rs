@@ -291,6 +291,7 @@ fn draw(frame: &mut Frame, app: &mut App) {
         &app.input,
         input_focused,
         app.blink_on,
+        app.agent_mode,
         &t,
     );
 

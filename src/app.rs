@@ -26,6 +26,36 @@ pub struct ViewOptions {
     pub scrollbar_visible: bool,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum AgentMode {
+    #[default]
+    Build,
+    Plan,
+}
+
+impl AgentMode {
+    const fn next(self) -> Self {
+        match self {
+            Self::Build => Self::Plan,
+            Self::Plan => Self::Build,
+        }
+    }
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Build => "Build",
+            Self::Plan => "Plan",
+        }
+    }
+
+    pub const fn accent(self, theme: &ColorTheme) -> ratatui::style::Color {
+        match self {
+            Self::Build => theme.primary,
+            Self::Plan => theme.palette_selected,
+        }
+    }
+}
+
 enum KeyChord {
     CtrlX,
 }
@@ -55,6 +85,7 @@ pub struct App {
     pub theme_modal_rect: Rect,
     pub loader_visible_ticks: u32,
     pub view: ViewOptions,
+    pub agent_mode: AgentMode,
     pending_chord: Option<KeyChord>,
 }
 
@@ -88,6 +119,7 @@ impl App {
                 sidebar_visible: true,
                 scrollbar_visible: true,
             },
+            agent_mode: AgentMode::default(),
             pending_chord: None,
         }
     }
@@ -307,6 +339,9 @@ fn handle_key_normal(app: &mut App, code: KeyCode, modifiers: KeyModifiers) -> b
             app.mode = Mode::CommandPalette;
             app.command_search.clear();
             app.command_selected = 0;
+        },
+        KeyCode::Tab | KeyCode::BackTab => {
+            app.agent_mode = app.agent_mode.next();
         },
         KeyCode::Enter | KeyCode::Char('j' | 'J') if modifiers.contains(KeyModifiers::SHIFT) => {
             app.input.push('\n');
